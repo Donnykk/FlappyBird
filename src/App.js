@@ -26,6 +26,24 @@ function App() {
   const [objHeight, setObjHeight] = useState(0);
   const [objPos, setObjPos] = useState(WALL_WIDTH);
   const [score, setScore] = useState(0);
+  const [walletAddress, setWalletAddress] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isGameOver, setIsGameOver] = useState(false);
+
+  // Function to handle wallet connection
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+        setWalletAddress(accounts[0]);
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error("Wallet connection failed", error);
+      }
+    } else {
+      alert('MetaMask is not installed. Please install it to use this feature.');
+    }
+  };
 
   //End the game when the player hits the bottom of the screen.
   useEffect(() => {
@@ -34,10 +52,9 @@ function App() {
       intVal = setInterval(() => {
         setBirdpos((birdpos) => birdpos + GRAVITY);
       }, 24);
-    } else {
+    } else if (birdpos >= WALL_HEIGHT - BIRD_HEIGHT) {
       setIsStart(false);
-      setBirdpos(300);
-      setScore(0);
+      setIsGameOver(true);
     }
     return () => clearInterval(intVal);
   });
@@ -60,7 +77,7 @@ function App() {
     }
   }, [isStart, objPos]);
 
-  //Ends the game of the player hits one of the obstacles.
+  //Ends the game if the player hits one of the obstacles.
   useEffect(() => {
     let topObj = birdpos >= 0 && birdpos < objHeight;
     let bottomObj =
@@ -74,8 +91,7 @@ function App() {
       (topObj || bottomObj)
     ) {
       setIsStart(false);
-      setBirdpos(300);
-      setScore(0);
+      setIsGameOver(true);
     }
   }, [isStart, birdpos, objHeight, objPos]);
 
@@ -83,6 +99,7 @@ function App() {
     const handleKeyPress = (e) => {
       if (e.code === 'Space') {
         setIsStart(true);
+        setIsGameOver(false);
         setBirdpos((prev) => prev - 30);
       }
     };
@@ -115,30 +132,44 @@ function App() {
   return (
     //Whole body of the game.
     <Home onClick={handler} onKeyDown={handleKeyDown} tabIndex="0">
-      <ScoreShow>Score: {score}</ScoreShow>
-      <Background height={WALL_HEIGHT} width={WALL_WIDTH}>
-        {!isStart ? <Startboard>Click To Start</Startboard> : null}
-        <Obj
-          height={objHeight}
-          width={OBJ_WIDTH}
-          left={objPos}
-          top={0}
-          deg={180}
-        />
-        <Bird
-          height={BIRD_HEIGHT}
-          width={BIRD_WIDTH}
-          top={birdpos}
-          left={100}
-        />
-        <Obj
-          height={WALL_HEIGHT - OBJ_GAP - objHeight}
-          width={OBJ_WIDTH}
-          left={objPos}
-          top={WALL_HEIGHT - (objHeight + (WALL_HEIGHT - OBJ_GAP - objHeight))}
-          deg={0}
-        />
-      </Background>
+      {!isLoggedIn ? (
+        <LoginContainer height={WALL_HEIGHT} width={WALL_WIDTH}>
+          <button onClick={connectWallet}>Connect Wallet to Start</button>
+        </LoginContainer>
+      ) : isGameOver ? (
+        <GameOverContainer height={WALL_HEIGHT} width={WALL_WIDTH}>
+          <h2>Game Over</h2>
+          <p>Final Score: {score}</p>
+          <button onClick={() => { setIsGameOver(false); setIsStart(false); setScore(0); setBirdpos(300); }}>Restart</button>
+        </GameOverContainer>
+      ) : (
+        <>
+          <ScoreShow>Score: {score}</ScoreShow>
+          <Background height={WALL_HEIGHT} width={WALL_WIDTH}>
+            {!isStart ? <Startboard>Click To Start</Startboard> : null}
+            <Obj
+              height={objHeight}
+              width={OBJ_WIDTH}
+              left={objPos}
+              top={0}
+              deg={180}
+            />
+            <Bird
+              height={BIRD_HEIGHT}
+              width={BIRD_WIDTH}
+              top={birdpos}
+              left={100}
+            />
+            <Obj
+              height={WALL_HEIGHT - OBJ_GAP - objHeight}
+              width={OBJ_WIDTH}
+              left={objPos}
+              top={WALL_HEIGHT - (objHeight + (WALL_HEIGHT - OBJ_GAP - objHeight))}
+              deg={0}
+            />
+          </Background>
+        </>
+      )}
     </Home>
   );
 }
@@ -208,4 +239,60 @@ const ScoreShow = styled.div`
   z-index: 1;
   font-weight: bold;
   font-size: 30px;
+`;
+
+const LoginContainer = styled(Background)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border-radius: 20px;
+  color: white;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.5);
+  button {
+    padding: 15px 30px;
+    font-size: 18px;
+    background-color: #007bff;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+`;
+
+const GameOverContainer = styled(Background)`
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  border-radius: 20px;
+  color: white;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.5);
+  h2 {
+    font-size: 36px;
+    margin-bottom: 20px;
+  }
+  p {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+  button {
+    padding: 15px 30px;
+    font-size: 18px;
+    background-color: #28a745;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  button:hover {
+    background-color: #218838;
+  }
 `;
